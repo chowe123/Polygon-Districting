@@ -850,6 +850,7 @@
             to { opacity: 1; transform: scale(1); }
         }
     </style>
+    <script src="https://cdn.jsdelivr.net/npm/polygon-clipping@0.15.7/dist/polygon-clipping.umd.min.js"></script>
 </head>
 <body>
 
@@ -988,6 +989,14 @@
                         <span class="stat-label">Secondary Ideal / District</span>
                         <span class="stat-value" id="stat-secondary-ideal" style="color:#a78bfa;">0.0</span>
                     </div>
+                    <div class="stat-box">
+                        <span class="stat-label">Equality (Gini)</span>
+                        <span class="stat-value" id="stat-gini" style="color:var(--success);">0.000</span>
+                    </div>
+                    <div class="stat-box">
+                        <span class="stat-label">Max Deviation</span>
+                        <span class="stat-value" id="stat-max-dev" style="color:var(--warning);">0.0%</span>
+                    </div>
                 </div>
 
                 <div class="chart-controls">
@@ -1007,6 +1016,14 @@
                 <button class="btn-primary" onclick="exportGeoJSONData()" style="width: 100%; font-size: 14px; padding: 12px;">
                     <svg viewBox="0 0 24 24" style="width: 18px; height: 18px; fill: white;"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/></svg>
                     Export GeoJSON Output
+                </button>
+                <button class="btn-secondary" onclick="exportCSV()" style="width: 100%; font-size: 13px; padding: 10px; margin-top: 8px; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                    <svg viewBox="0 0 24 24" style="width: 16px; height: 16px; fill: currentColor;"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
+                    Export District Summary (CSV)
+                </button>
+                <button class="btn-secondary" onclick="exportMergedGeoJSON()" style="width: 100%; font-size: 13px; padding: 10px; margin-top: 8px; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                    <svg viewBox="0 0 24 24" style="width: 16px; height: 16px; fill: currentColor;"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+                    Export Merged Districts (GeoJSON)
                 </button>
 
             </div>
@@ -1076,9 +1093,9 @@
 
             <!-- SELECT DESIGNER TOOL -->
             <div class="mode-container">
-                <button class="mode-btn active" id="mode-click" onclick="setMode('click')">
+                <button class="mode-btn active" id="mode-click" onclick="setMode('click')" title="Click to assign, drag to move polygons between districts">
                     <svg viewBox="0 0 24 24" style="width:14px; height:14px; fill:currentColor;"><path d="M9 11.24V7.5C9 6.12 10.12 5 11.5 5S14 6.12 14 7.5v3.74c1.21-.81 2-2.18 2-3.74C16 5.01 13.99 3 11.5 3S7 5.01 7 7.5c0 1.56.79 2.93 2 3.74zm8.03 2.14l-4.43-2.22c-.34-.17-.74-.17-1.08 0l-4.43 2.22c-.67.34-1.09 1.03-1.09 1.78v4.34c0 1.1.9 2 2 2h7.02c1.1 0 2-.9 2-2v-4.34c0-.75-.42-1.44-1.09-1.78z"/></svg>
-                    Click Select
+                    Click / Drag
                 </button>
                 <button class="mode-btn" id="mode-paint" onclick="setMode('paint')">
                     <svg viewBox="0 0 24 24" style="width:14px; height:14px; fill:currentColor;"><path d="M7 14c-1.66 0-3 1.34-3 3 0 1.31-1.16 2-2 2 .92 1.22 2.49 2 4 2 2.21 0 4-1.79 4-4 0-1.66-1.34-3-3-3zm13.71-9.37l-1.34-1.34c-.39-.39-1.02-.39-1.41 0L9 12.25 11.75 15l8.96-8.96c.39-.39.39-1.02 0-1.41z"/></svg>
@@ -1104,8 +1121,10 @@
                     <span>Workspace Tips</span>
                 </div>
                 <ul style="margin: 0; padding-left: 14px; display: flex; flex-direction: column; gap: 4px;">
-                    <li>Hold <kbd style="background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 3px; padding: 1px 4px; font-family: monospace; font-size: 10px; color: #fff;">Ctrl</kbd> to view changes (preview impacts on hover).</li>
-                    <li>Hold <kbd style="background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 3px; padding: 1px 4px; font-family: monospace; font-size: 10px; color: #fff;">Alt</kbd> + click a polygon to change the active target district.</li>
+                    <li>Click a polygon to assign it to the active district.</li>
+                    <li>Drag a polygon onto another to move it to that district.</li>
+                    <li>Hold <kbd style="background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 3px; padding: 1px 4px; font-family: monospace; font-size: 10px; color: #fff;">Ctrl</kbd> to preview impact on hover.</li>
+                    <li>Hold <kbd style="background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 3px; padding: 1px 4px; font-family: monospace; font-size: 10px; color: #fff;">Alt</kbd> + click to set active district from polygon.</li>
                 </ul>
             </div>
 
@@ -1234,6 +1253,14 @@
         let previewActive = false;
         let seedModeActive = false;
         let customDistrictSeeds = {}; // Key: district name, Value: unique _poly_id
+
+        // Drag-and-drop district reassignment state
+        let dragSourceLayer = null;
+        let dragSourceDistrict = null;
+        let dragTargetLayer = null;
+        let dragActive = false;
+        let dragStartX = 0;
+        let dragStartY = 0;
 
         // Warn before refresh/close if data is loaded
         window.addEventListener('beforeunload', function(e) {
@@ -1405,11 +1432,71 @@
                 }
             });
 
-            // Track global mouse state for painting
+            // Track global mouse state for painting and drag-drop
             document.addEventListener('mousedown', () => { isMouseDown = true; });
-            document.addEventListener('mouseup', () => { 
+            document.addEventListener('mouseup', (event) => { 
                 isMouseDown = false;
+
+                // Complete drag-and-drop reassignment
+                if (dragSourceLayer && dragActive && dragTargetLayer) {
+                    let sourceDistrict = dragSourceDistrict;
+                    let targetDistrict = dragTargetLayer._props.assignedDistrict;
+                    if (sourceDistrict && targetDistrict && sourceDistrict !== targetDistrict) {
+                        saveSnapshot();
+                        // Subtract from source district
+                        let vf = document.getElementById('field-select').value;
+                        let sf = document.getElementById('secondary-field-select').value;
+                        let val = vf ? (parseFloat(dragSourceLayer._props[vf]) || 0) : 0;
+                        let secVal = sf ? (parseFloat(dragSourceLayer._props[sf]) || 0) : 0;
+                        if (sourceDistrict && districtSums[sourceDistrict] !== undefined) {
+                            districtSums[sourceDistrict] = Math.max(0, districtSums[sourceDistrict] - val);
+                            districtSecondarySums[sourceDistrict] = Math.max(0, districtSecondarySums[sourceDistrict] - secVal);
+                            districtCounts[sourceDistrict] = Math.max(0, districtCounts[sourceDistrict] - 1);
+                        }
+                        // Add to target district
+                        dragSourceLayer._props.assignedDistrict = targetDistrict;
+                        districtSums[targetDistrict] += val;
+                        districtSecondarySums[targetDistrict] += secVal;
+                        districtCounts[targetDistrict] += 1;
+                        dragSourceLayer.setStyle(getPolygonStyle(dragSourceLayer));
+                        updateMapLegend();
+                        recalculateAnalytics();
+                    }
+                    // Reset target highlight
+                    if (dragTargetLayer) {
+                        dragTargetLayer.setStyle(getPolygonStyle(dragTargetLayer));
+                    }
+                    dragSourceLayer = null;
+                    dragSourceDistrict = null;
+                    dragTargetLayer = null;
+                    dragActive = false;
+                } else if (dragSourceLayer && !dragActive) {
+                    // Single click (no drag movement) — assign polygon to active district
+                    let clientX = event.clientX || 0;
+                    let clientY = event.clientY || 0;
+                    let dx = clientX - dragStartX;
+                    let dy = clientY - dragStartY;
+                    if (dx * dx + dy * dy < 25) { // Less than 5px movement
+                        saveSnapshot();
+                        assignPolygon(dragSourceLayer, true);
+                    }
+                    dragSourceLayer = null;
+                    dragSourceDistrict = null;
+                    dragTargetLayer = null;
+                    dragActive = false;
+                } else if (dragSourceLayer) {
+                    // Drag cancelled — reset without reassignment
+                    dragSourceLayer = null;
+                    dragSourceDistrict = null;
+                    dragTargetLayer = null;
+                    dragActive = false;
+                }
+
                 if (map && paintModeActive) {
+                    map.dragging.enable();
+                }
+                // Re-enable map dragging after any drag operation in click mode
+                if (map && clickModeActive && !paintModeActive) {
                     map.dragging.enable();
                 }
             });
@@ -2303,8 +2390,32 @@
                             saveSnapshot();
                             assignPolygon(l, true); // Suppress individual snapshots
                         } else if (clickModeActive) {
-                            saveSnapshot();
-                            assignPolygon(l, true); // Suppress individual snapshots
+                            // Start drag-and-drop reassignment
+                            map.dragging.disable(); // Prevent panning during drag
+                            dragSourceLayer = l;
+                            dragSourceDistrict = l._props.assignedDistrict;
+                            dragTargetLayer = null;
+                            dragActive = false;
+                            dragStartX = e.originalEvent.clientX;
+                            dragStartY = e.originalEvent.clientY;
+                        }
+                    });
+
+                    // Drag target detection: track which polygon cursor is over during drag
+                    l.on('mouseover', function() {
+                        if (dragSourceLayer && dragSourceLayer !== l) {
+                            dragTargetLayer = l;
+                            dragActive = true;
+                            // Highlight the target polygon
+                            l.setStyle({ weight: 3, color: '#ffffff', fillOpacity: 0.5 });
+                        }
+                    });
+
+                    l.on('mouseout', function() {
+                        if (dragActive && dragTargetLayer === l) {
+                            dragTargetLayer = null;
+                            dragActive = false;
+                            l.setStyle(getPolygonStyle(l));
                         }
                     });
 
@@ -2649,6 +2760,38 @@
             } else {
                 secContainer.style.display = 'none';
             }
+
+            // Population Equality Metrics
+            let sums = Object.values(activeSums);
+            let gini = 0;
+            let maxDev = 0;
+            if (sums.length > 1 && idealTarget > 0) {
+                // Gini coefficient
+                let sortedSums = [...sums].sort((a, b) => a - b);
+                let n = sortedSums.length;
+                let cumulativeSum = 0;
+                let totalSumOfDiffs = 0;
+                for (let i = 0; i < n; i++) {
+                    cumulativeSum += sortedSums[i];
+                    totalSumOfDiffs += (2 * (i + 1) - n - 1) * sortedSums[i];
+                }
+                gini = totalSumOfDiffs / (n * cumulativeSum);
+                gini = Math.max(0, Math.min(1, Math.abs(gini)));
+
+                // Max deviation
+                for (let s of sums) {
+                    let dev = Math.abs((s - idealTarget) / idealTarget) * 100;
+                    if (dev > maxDev) maxDev = dev;
+                }
+            }
+
+            let giniEl = document.getElementById('stat-gini');
+            giniEl.innerText = gini.toFixed(3);
+            giniEl.style.color = gini < 0.05 ? 'var(--success)' : gini < 0.15 ? 'var(--warning)' : 'var(--danger)';
+
+            let maxDevEl = document.getElementById('stat-max-dev');
+            maxDevEl.innerText = maxDev.toFixed(1) + '%';
+            maxDevEl.style.color = maxDev < 5 ? 'var(--success)' : maxDev < 15 ? 'var(--warning)' : 'var(--danger)';
             
             // Update district manager UI items
             let mgrList = document.getElementById('districts-list');
@@ -3148,6 +3291,184 @@
             downloadAnchor.remove();
         }
 
+        /* ---------- MERGED DISTRICT GEOJSON EXPORT ---------- */
+        function exportMergedGeoJSON() {
+            let vf = document.getElementById('field-select').value;
+            let sf = document.getElementById('secondary-field-select').value;
+            let df = document.getElementById('district-field-select').value;
+
+            // Group polygon coordinates and sums by district
+            let districtGroups = {};
+            mapLayerGroup.eachLayer(layer => {
+                layer.eachLayer(l => {
+                    let district = l._props.assignedDistrict;
+                    if (!district) return;
+                    if (!districtGroups[district]) {
+                        districtGroups[district] = { polygons: [], primarySum: 0, secondarySum: 0, count: 0 };
+                    }
+                    let g = districtGroups[district];
+                    g.count++;
+                    if (vf) g.primarySum += parseFloat(l._props[vf]) || 0;
+                    if (sf) g.secondarySum += parseFloat(l._props[sf]) || 0;
+                    let geo = l.toGeoJSON().geometry;
+                    if (geo.type === 'Polygon') {
+                        g.polygons.push(geo.coordinates);
+                    } else if (geo.type === 'MultiPolygon') {
+                        for (let coords of geo.coordinates) {
+                            g.polygons.push(coords);
+                        }
+                    }
+                });
+            });
+
+            let districts = Object.keys(districtGroups);
+            if (districts.length === 0) {
+                alert("No district assignments to merge.");
+                return;
+            }
+
+            let features = [];
+            for (let dName of districts) {
+                let g = districtGroups[dName];
+                let mergedCoords;
+
+                if (g.polygons.length > 1) {
+                    try {
+                        let result = polygonClipping.union(...g.polygons);
+                        if (result.length === 0) {
+                            mergedCoords = null;
+                        } else if (result.length === 1) {
+                            mergedCoords = result[0];
+                        } else {
+                            mergedCoords = result;
+                        }
+                    } catch (e) {
+                        console.warn("Union failed for district", dName, e);
+                        mergedCoords = null;
+                    }
+                } else if (g.polygons.length === 1) {
+                    mergedCoords = g.polygons[0];
+                }
+
+                // Fallback: use individual polygons as MultiPolygon
+                if (!mergedCoords) {
+                    mergedCoords = g.polygons;
+                }
+
+                // Determine geometry type
+                let geometryType;
+                if (mergedCoords.length > 0 && Array.isArray(mergedCoords[0]) && Array.isArray(mergedCoords[0][0]) && typeof mergedCoords[0][0][0] === 'number') {
+                    geometryType = 'Polygon';
+                } else {
+                    geometryType = 'MultiPolygon';
+                }
+
+                let props = { district: dName, feature_count: g.count };
+                if (vf) props[vf + '_sum'] = g.primarySum;
+                if (sf) props[sf + '_sum'] = g.secondarySum;
+                if (df) props[df] = dName;
+
+                features.push({
+                    type: 'Feature',
+                    geometry: { type: geometryType, coordinates: mergedCoords },
+                    properties: props
+                });
+            }
+
+            let fc = { type: 'FeatureCollection', features: features };
+            let dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(fc, null, 2));
+            let a = document.createElement('a');
+            a.setAttribute("href", dataStr);
+            a.setAttribute("download", "merged_districts.geojson");
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+        }
+
+        /* ---------- CSV EXPORT ---------- */
+        function exportCSV() {
+            let vf = document.getElementById('field-select').value;
+            let sf = document.getElementById('secondary-field-select').value;
+
+            let totalValueSum = 0;
+            let totalSecondarySum = 0;
+            let totalFeatures = 0;
+
+            mapLayerGroup.eachLayer(layer => {
+                layer.eachLayer(l => {
+                    totalFeatures++;
+                    let val = vf ? (parseFloat(l._props[vf]) || 0) : 0;
+                    totalValueSum += val;
+                    if (sf) {
+                        let secVal = parseFloat(l._props[sf]) || 0;
+                        totalSecondarySum += secVal;
+                    }
+                });
+            });
+
+            let numDistricts = Object.keys(districtSums).length;
+            let idealTarget = numDistricts > 0 ? (totalValueSum / numDistricts) : 0;
+            let secondaryIdealTarget = (sf && numDistricts > 0) ? (totalSecondarySum / numDistricts) : 0;
+
+            let vfLabel = vf || 'Primary';
+            let sfLabel = sf || 'Secondary';
+
+            // Build CSV rows
+            let rows = [];
+            let headers = ['District', 'Feature Count', vfLabel + ' Value', vfLabel + ' Ideal', vfLabel + ' Deviation %'];
+            if (sf) headers.push(sfLabel + ' Value', sfLabel + ' Ideal', sfLabel + ' Deviation %');
+            rows.push(headers.join(','));
+
+            getSortedDistricts().forEach(dName => {
+                let sum = districtSums[dName] || 0;
+                let count = districtCounts[dName] || 0;
+                let devPercent = idealTarget > 0 ? ((sum - idealTarget) / idealTarget * 100) : 0;
+                let row = [
+                    '"' + dName.replace(/"/g, '""') + '"',
+                    count,
+                    sum.toFixed(2),
+                    idealTarget.toFixed(2),
+                    devPercent.toFixed(2)
+                ];
+                if (sf) {
+                    let secSum = districtSecondarySums[dName] || 0;
+                    let secDevPercent = secondaryIdealTarget > 0 ? ((secSum - secondaryIdealTarget) / secondaryIdealTarget * 100) : 0;
+                    row.push(secSum.toFixed(2), secondaryIdealTarget.toFixed(2), secDevPercent.toFixed(2));
+                }
+                rows.push(row.join(','));
+            });
+
+            // Summary rows
+            rows.push('');
+            rows.push(['"Total Features"', totalFeatures].join(','));
+            rows.push(['"Total Primary Value"', totalValueSum.toFixed(2)].join(','));
+            rows.push(['"Ideal Per District"', idealTarget.toFixed(2)].join(','));
+            rows.push(['"Number of Districts"', numDistricts].join(','));
+
+            // Gini
+            let sums = Object.values(districtSums);
+            let gini = 0;
+            if (sums.length > 1 && idealTarget > 0) {
+                let sortedSums = [...sums].sort((a, b) => a - b);
+                let n = sortedSums.length;
+                let totalSumOfDiffs = 0;
+                for (let i = 0; i < n; i++) {
+                    totalSumOfDiffs += (2 * (i + 1) - n - 1) * sortedSums[i];
+                }
+                gini = Math.abs(totalSumOfDiffs / (n * totalValueSum));
+            }
+            rows.push(['"Gini Coefficient"', gini.toFixed(4)].join(','));
+
+            let csvContent = rows.join('\n');
+            let dataStr = "data:text/csv;charset=utf-8," + encodeURIComponent(csvContent);
+            let downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", "district_summary.csv");
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+        }
+
         /* ---------- AUTO-DISTRICT SOLVER DIALOG CONTROLS ---------- */
         function openAutoDistrictModal() {
             let vf = document.getElementById('field-select').value;
@@ -3327,7 +3648,11 @@
             return [0, 0];
         }
 
-        function solveAutoDistrictLocal(features, numDistricts, valueField, compactnessWeight, numRestarts, seedMode, customSeeds, districtNames, onProgress) {
+        function yieldToUI() {
+            return new Promise(resolve => setTimeout(resolve, 0));
+        }
+
+        async function solveAutoDistrictLocal(features, numDistricts, valueField, compactnessWeight, numRestarts, seedMode, customSeeds, districtNames, onProgress) {
             if (!features || features.length === 0) {
                 throw new Error("No features provided for auto-districting.");
             }
@@ -3606,6 +3931,7 @@
                 console.log(`[Solver] Restart ${restartIdx+1}: swaps=${acceptedSwaps}/${steps}, sums=${districtSums.map(s=>s.toFixed(1)).join(', ')}, energy=${finalEnergy.toFixed(4)}`);
 
                 onProgress(restartIdx + 1, numRestarts, finalEnergy);
+                await yieldToUI();
 
                 if (finalEnergy < bestEnergy) {
                     bestEnergy = finalEnergy;
@@ -3672,7 +3998,7 @@
             try {
                 let overallBestEnergy = Infinity;
 
-                let result = solveAutoDistrictLocal(
+                let result = await solveAutoDistrictLocal(
                     featuresToSend, numDistricts, vf, compactness, restarts,
                     seedMode, customDistrictSeeds, Object.keys(districtSums),
                     function(restart, total, energy) {
