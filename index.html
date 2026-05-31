@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Polydistrict Studio - Premium GIS Territorial Planner</title>
+    <title>Districting Tool - Premium GIS Territorial Planner</title>
     
     <!-- Leaflet & Chart.js -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
@@ -162,38 +162,6 @@
             width: 16px;
             height: 16px;
             fill: var(--text-secondary);
-        }
-
-        /* ONBOARDING TABS */
-        .tab-buttons {
-            display: flex;
-            background: rgba(0, 0, 0, 0.2);
-            border-radius: var(--radius-md);
-            padding: 4px;
-            margin-bottom: 16px;
-        }
-
-        .tab-btn {
-            flex: 1;
-            padding: 8px 12px;
-            font-size: 13px;
-            font-weight: 500;
-            background: transparent;
-            border: none;
-            color: var(--text-secondary);
-            border-radius: 6px;
-            cursor: pointer;
-            transition: var(--transition);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 6px;
-        }
-
-        .tab-btn.active {
-            background: rgba(255, 255, 255, 0.08);
-            color: var(--text-primary);
-            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
         }
 
         /* FORM ELEMENTS */
@@ -851,6 +819,8 @@
         }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/polygon-clipping@0.15.7/dist/polygon-clipping.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/shpjs@6.2.0/dist/shp.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/fflate@0.8.2/umd/index.min.js"></script>
 </head>
 <body>
 
@@ -864,7 +834,7 @@
                         <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/>
                     </svg>
                 </div>
-                <div class="logo-title">Polydistrict Studio</div>
+                <div class="logo-title">Districting Tool</div>
             </div>
         </div>
 
@@ -878,11 +848,6 @@
                     1. Data Source
                 </div>
 
-                <div class="tab-buttons">
-                    <button class="tab-btn active" id="tab-geojson">GeoJSON File</button>
-
-                </div>
-
                 <!-- GEOJSON SECTION -->
                 <div id="source-geojson-section">
                     <div class="upload-zone" onclick="document.getElementById('geojson-input').click()" id="drop-zone">
@@ -890,10 +855,17 @@
                             <svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
                         </div>
                         <div>
-                            <span style="font-size: 13px; font-weight: 600; display: block; margin-bottom: 4px;">Choose a GeoJSON file</span>
-                            <span style="font-size: 11px; color: var(--text-muted);">or drag & drop it here</span>
+                            <span style="font-size: 13px; font-weight: 600; display: block; margin-bottom: 4px;">Load Data</span>
+                            <span style="font-size: 11px; color: var(--text-muted);">GeoJSON or Shapefile (.zip)</span>
                         </div>
-                        <input type="file" id="geojson-input" accept=".geojson,.json" style="display:none;" onchange="loadGeoJSON(event)">
+                        <input type="file" id="geojson-input" accept=".geojson,.json,.zip" style="display:none;" onchange="loadGeoJSON(event)">
+                    </div>
+                    <div style="text-align: center; margin-top: 10px;">
+                        <a href="#" onclick="document.getElementById('gdb-folder-input').click(); return false;" style="font-size: 12px; color: var(--accent); text-decoration: none;">Load File Geodatabase (.gdb) folder</a>
+                        <input type="file" id="gdb-folder-input" webkitdirectory style="display:none;" onchange="loadGDBFromFolder(event)">
+                        &nbsp;&middot;&nbsp;
+                        <a href="#" onclick="document.getElementById('shp-folder-input').click(); return false;" style="font-size: 12px; color: var(--accent); text-decoration: none;">Load Shapefile folder</a>
+                        <input type="file" id="shp-folder-input" webkitdirectory style="display:none;" onchange="loadShapefileFromFolder(event)">
                     </div>
                 </div>
 
@@ -1013,17 +985,13 @@
 
                 <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 20px 0 14px 0;">
 
-                <button class="btn-primary" onclick="exportGeoJSONData()" style="width: 100%; font-size: 14px; padding: 12px;">
-                    <svg viewBox="0 0 24 24" style="width: 18px; height: 18px; fill: white;"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/></svg>
-                    Export GeoJSON Output
+                <button class="btn-primary" onclick="openExportModal()" style="width: 100%; font-size: 14px; padding: 12px;">
+                    <svg viewBox="0 0 24 24" style="width: 18px; height: 18px; fill: white;"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+                    Export Data
                 </button>
                 <button class="btn-secondary" onclick="exportCSV()" style="width: 100%; font-size: 13px; padding: 10px; margin-top: 8px; display: flex; align-items: center; justify-content: center; gap: 8px;">
                     <svg viewBox="0 0 24 24" style="width: 16px; height: 16px; fill: currentColor;"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
                     Export District Summary (CSV)
-                </button>
-                <button class="btn-secondary" onclick="exportMergedGeoJSON()" style="width: 100%; font-size: 13px; padding: 10px; margin-top: 8px; display: flex; align-items: center; justify-content: center; gap: 8px;">
-                    <svg viewBox="0 0 24 24" style="width: 16px; height: 16px; fill: currentColor;"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
-                    Export Merged Districts (GeoJSON)
                 </button>
 
             </div>
@@ -1226,6 +1194,61 @@
                 <span id="auto-district-progress-detail" style="font-size: 10px; color: var(--text-muted); display: block; text-align: center;">Initializing...</span>
             </div>
             <button class="btn-primary" id="btn-run-auto-district" onclick="runAutoDistrictSolver()" style="width: 100%; margin-top: 12px; font-size: 13px; padding: 10px;">Run Optimization Solver</button>
+        </div>
+    </div>
+
+    <!-- LAYER SELECTOR MODAL (for GDB import) -->
+    <div id="layer-selector-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span class="modal-title">Select Layers to Import</span>
+                <span class="modal-close" onclick="document.getElementById('layer-selector-modal').style.display='none'">&times;</span>
+            </div>
+            <div style="margin-top: 14px; max-height: 300px; overflow-y: auto;">
+                <div id="layer-selector-list"></div>
+            </div>
+            <button class="btn-primary" id="btn-import-layers" onclick="confirmLayerSelection()" style="width: 100%; margin-top: 12px; font-size: 13px; padding: 10px;">Import Selected Layers</button>
+        </div>
+    </div>
+
+    <!-- EXPORT MODAL -->
+    <div id="export-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span class="modal-title">Export Data</span>
+                <span class="modal-close" onclick="document.getElementById('export-modal').style.display='none'">&times;</span>
+            </div>
+            <div style="margin-top: 14px;">
+                <label style="font-size: 13px; font-weight: 500; display: block; margin-bottom: 8px;">Format</label>
+                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                    <label style="flex:1;min-width:100px;padding:10px 14px;background:rgba(255,255,255,0.04);border-radius:8px;cursor:pointer;text-align:center;font-size:13px;border:2px solid transparent;" id="export-opt-geojson" onclick="selectExportFormat('geojson')">
+                        <input type="radio" name="export-format" value="geojson" checked style="display:none;">
+                        <div style="font-weight:600;">GeoJSON</div>
+                        <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">Single file</div>
+                    </label>
+                    <label style="flex:1;min-width:100px;padding:10px 14px;background:rgba(255,255,255,0.04);border-radius:8px;cursor:pointer;text-align:center;font-size:13px;border:2px solid transparent;" id="export-opt-shapefile" onclick="selectExportFormat('shapefile')">
+                        <input type="radio" name="export-format" value="shapefile" style="display:none;">
+                        <div style="font-weight:600;">Shapefile</div>
+                        <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">.shp + .dbf + .prj</div>
+                    </label>
+                    <label style="flex:1;min-width:100px;padding:10px 14px;background:rgba(255,255,255,0.04);border-radius:8px;cursor:pointer;text-align:center;font-size:13px;border:2px solid transparent;" id="export-opt-filegdb" onclick="selectExportFormat('filegdb')">
+                        <input type="radio" name="export-format" value="filegdb" style="display:none;">
+                        <div style="font-weight:600;">File Geodatabase</div>
+                        <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">.gdb folder (zip)</div>
+                    </label>
+                </div>
+                <div id="export-options-geojson" style="margin-top: 12px;">
+                    <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer;">
+                        <input type="checkbox" id="export-merge-districts" style="accent-color:var(--accent);">
+                        Merge districts into single polygons
+                    </label>
+                </div>
+                <div id="export-options-filegdb" style="margin-top: 12px; display: none;">
+                    <label style="font-size: 12px; display: block; margin-bottom: 4px;">Feature Class Name</label>
+                    <input type="text" id="export-feature-class" value="districts" style="width:100%;padding:8px 10px;background:var(--bg-card);border:1px solid var(--border-color);border-radius:6px;color:var(--text);font-size:13px;">
+                </div>
+            </div>
+            <button class="btn-primary" onclick="confirmExport()" style="width: 100%; margin-top: 16px; font-size: 13px; padding: 10px;">Export</button>
         </div>
     </div>
 
@@ -1556,49 +1579,450 @@
             }
         });
 
-        function loadGeoJSON(event) {
+        async function loadGeoJSON(event) {
             let file = event.target.files[0];
             if (!file) return;
 
-            let reader = new FileReader();
-            reader.onload = function(e) {
-                try {
-                    let data = JSON.parse(e.target.result);
+            let indicator = document.getElementById('source-indicator');
+            let label = document.getElementById('source-label');
+            indicator.style.display = 'flex';
+            label.innerText = 'Loading: ' + file.name + '...';
+
+            try {
+                let data = null;
+                let name = file.name.toLowerCase();
+
+                if (name.endsWith('.geojson') || name.endsWith('.json')) {
+                    let text = await file.text();
+                    data = JSON.parse(text);
                     if (data.type !== "FeatureCollection" || !data.features) {
-                        alert("Error: File is not a valid GeoJSON FeatureCollection.");
-                        return;
+                        throw new Error("File is not a valid GeoJSON FeatureCollection.");
                     }
-
-                    currentFeatures = data.features;
-                    assignUniquePolyIds();
-                    
-                    // Harvest all properties fields
-                    let allProps = new Set();
-                    data.features.slice(0, 100).forEach(feat => {
-                        if (feat.properties) {
-                            Object.keys(feat.properties).forEach(key => allProps.add(key));
-                        }
-                    });
-                    currentFields = Array.from(allProps);
-
-                    // Populate fields drop-downs
-                    populateDropdowns(currentFields);
-
-                    // Render polygons immediately on map
-                    renderPolygonsOnMap();
-
-                    // Update UI steps
-                    document.getElementById('source-label').innerText = "File: " + file.name;
-                    document.getElementById('source-indicator').style.display = 'flex';
-                    
-                    showStep('fields');
-                    showStep('workspace');
-
-                } catch (err) {
-                    alert("GeoJSON Parse Error: " + err.message);
+                } else if (name.endsWith('.zip')) {
+                    let arrayBuffer = await file.arrayBuffer();
+                    let result = await shp(arrayBuffer);
+                    data = normalizeShpOutput(result);
+                } else {
+                    throw new Error("Unsupported format. Use .geojson, .json, or .zip (shapefile or GDB).");
                 }
-            };
-            reader.readAsText(file);
+
+                if (!data || !data.features || data.features.length === 0) {
+                    throw new Error("No features found in file.");
+                }
+
+                currentFeatures = data.features;
+                assignUniquePolyIds();
+
+                let allProps = new Set();
+                data.features.slice(0, 100).forEach(feat => {
+                    if (feat.properties) {
+                        Object.keys(feat.properties).forEach(key => allProps.add(key));
+                    }
+                });
+                currentFields = Array.from(allProps);
+
+                populateDropdowns(currentFields);
+                renderPolygonsOnMap();
+
+                label.innerText = "File: " + file.name;
+                indicator.style.display = 'flex';
+
+                showStep('fields');
+                showStep('workspace');
+
+            } catch (err) {
+                indicator.style.display = 'none';
+                alert("Load Error: " + err.message);
+            }
+        }
+
+        function normalizeShpOutput(result) {
+            if (result.type === "FeatureCollection") {
+                return result;
+            }
+            let allFeatures = [];
+            let layerNames = Object.keys(result);
+            for (let name of layerNames) {
+                let layer = result[name];
+                if (layer && layer.type === "FeatureCollection" && layer.features) {
+                    for (let feat of layer.features) {
+                        if (!feat.properties) feat.properties = {};
+                        feat.properties._layer = name;
+                    }
+                    allFeatures.push(...layer.features);
+                }
+            }
+            return { type: "FeatureCollection", features: allFeatures };
+        }
+
+        let pendingGdbLayers = []; // {dataset, name, geomType, count}
+        let pendingGdalInstance = null;
+        let pendingImportType = ''; // 'gdb' or 'shapefile'
+
+        async function loadGDBFromFolder(event) {
+            let files = event.target.files;
+            if (!files || files.length === 0) return;
+
+            let indicator = document.getElementById('source-indicator');
+            let label = document.getElementById('source-label');
+            indicator.style.display = 'flex';
+            label.innerText = 'Loading GDB via GDAL (WASM)...';
+
+            try {
+                const initGdalJs = (await import('https://cdn.jsdelivr.net/npm/gdal3.js@2.8.1/dist/package/gdal3.js')).default;
+
+                const Gdal = await initGdalJs({
+                    path: 'https://cdn.jsdelivr.net/npm/gdal3.js@2.8.1/dist/package',
+                    useWorker: false
+                });
+
+                let gdbDir = '/' + files[0].webkitRelativePath.split('/')[0];
+                let fs = Gdal.Module.FS;
+
+                for (let file of files) {
+                    let relPath = file.webkitRelativePath.replace(/\\/g, '/');
+                    let parts = relPath.split('/');
+                    let dirPath = '';
+                    for (let i = 0; i < parts.length - 1; i++) {
+                        dirPath += '/' + parts[i];
+                        try { fs.mkdir(dirPath); } catch (_) {}
+                    }
+                    let buffer = await file.arrayBuffer();
+                    fs.writeFile('/' + relPath, new Uint8Array(buffer));
+                }
+
+                const result = await Gdal.open(gdbDir);
+                if (result.errors && result.errors.length > 0) {
+                    throw new Error("GDAL open errors: " + result.errors.join(', '));
+                }
+                if (!result.datasets || result.datasets.length === 0) {
+                    throw new Error("No layers found in the GDB.");
+                }
+
+                pendingGdbLayers = [];
+                pendingGdalInstance = Gdal;
+                pendingImportType = 'gdb';
+                for (let dataset of result.datasets) {
+                    try {
+                        let info = await Gdal.ogrinfo(dataset, ['-json']);
+                        let parsed = JSON.parse(info);
+                        let layers = parsed.layers || [];
+                        for (let l of layers) {
+                            let g = (l.geometryFields && l.geometryFields[0]) || {};
+                            let geomType = (g.type || '').toLowerCase();
+                            // Only include polygon-type layers
+                            if (geomType.includes('polygon') || geomType.includes('multipolygon')) {
+                                pendingGdbLayers.push({
+                                    dataset: dataset,
+                                    name: l.name,
+                                    geomType: g.type || 'Unknown',
+                                    count: l.featureCount || 0
+                                });
+                            }
+                        }
+                    } catch (e) {
+                        console.warn("Could not get info for dataset:", dataset.path, e);
+                    }
+                }
+
+                if (pendingGdbLayers.length === 0) {
+                    throw new Error("No polygon layers found in the GDB.");
+                }
+
+                // Show layer selector modal
+                let listDiv = document.getElementById('layer-selector-list');
+                listDiv.innerHTML = pendingGdbLayers.map((l, i) =>
+                    `<label style="display:flex;align-items:center;gap:10px;padding:8px 10px;margin-bottom:4px;background:rgba(255,255,255,0.04);border-radius:6px;cursor:pointer;font-size:13px;">
+                        <input type="checkbox" checked data-index="${i}" style="accent-color:var(--accent);">
+                        <span><strong>${l.name}</strong>  <span style="color:var(--text-muted);font-size:11px;">(${l.geomType}, ${l.count} features)</span></span>
+                    </label>`
+                ).join('');
+
+                document.getElementById('layer-selector-modal').style.display = 'flex';
+                indicator.style.display = 'none';
+
+            } catch (err) {
+                indicator.style.display = 'none';
+                alert("GDB Load Error: " + err.message);
+                pendingGdbLayers = [];
+                pendingGdalInstance = null;
+                pendingImportType = '';
+            }
+        }
+
+        async function loadShapefileFromFolder(event) {
+            let files = event.target.files;
+            if (!files || files.length === 0) return;
+
+            let indicator = document.getElementById('source-indicator');
+            let label = document.getElementById('source-label');
+            indicator.style.display = 'flex';
+            label.innerText = 'Loading Shapefile via GDAL (WASM)...';
+
+            try {
+                const initGdalJs = (await import('https://cdn.jsdelivr.net/npm/gdal3.js@2.8.1/dist/package/gdal3.js')).default;
+
+                const Gdal = await initGdalJs({
+                    path: 'https://cdn.jsdelivr.net/npm/gdal3.js@2.8.1/dist/package',
+                    useWorker: false
+                });
+
+                let shpDir = '/' + files[0].webkitRelativePath.split('/')[0];
+                let fs = Gdal.Module.FS;
+
+                for (let file of files) {
+                    let relPath = file.webkitRelativePath.replace(/\\/g, '/');
+                    let parts = relPath.split('/');
+                    let dirPath = '';
+                    for (let i = 0; i < parts.length - 1; i++) {
+                        dirPath += '/' + parts[i];
+                        try { fs.mkdir(dirPath); } catch (_) {}
+                    }
+                    let buffer = await file.arrayBuffer();
+                    fs.writeFile('/' + relPath, new Uint8Array(buffer));
+                }
+
+                const result = await Gdal.open(shpDir);
+                if (result.errors && result.errors.length > 0) {
+                    throw new Error("GDAL open errors: " + result.errors.join(', '));
+                }
+                if (!result.datasets || result.datasets.length === 0) {
+                    throw new Error("No layers found in the folder.");
+                }
+
+                pendingGdbLayers = [];
+                pendingGdalInstance = Gdal;
+                pendingImportType = 'shapefile';
+                for (let dataset of result.datasets) {
+                    try {
+                        let info = await Gdal.ogrinfo(dataset, ['-json']);
+                        let parsed = JSON.parse(info);
+                        let layers = parsed.layers || [];
+                        for (let l of layers) {
+                            let g = (l.geometryFields && l.geometryFields[0]) || {};
+                            let geomType = (g.type || '').toLowerCase();
+                            if (geomType.includes('polygon') || geomType.includes('multipolygon')) {
+                                pendingGdbLayers.push({
+                                    dataset: dataset,
+                                    name: l.name,
+                                    geomType: g.type || 'Unknown',
+                                    count: l.featureCount || 0
+                                });
+                            }
+                        }
+                    } catch (e) {
+                        console.warn("Could not get info for dataset:", dataset.path, e);
+                    }
+                }
+
+                if (pendingGdbLayers.length === 0) {
+                    throw new Error("No polygon layers found in the folder.");
+                }
+
+                let listDiv = document.getElementById('layer-selector-list');
+                listDiv.innerHTML = pendingGdbLayers.map((l, i) =>
+                    `<label style="display:flex;align-items:center;gap:10px;padding:8px 10px;margin-bottom:4px;background:rgba(255,255,255,0.04);border-radius:6px;cursor:pointer;font-size:13px;">
+                        <input type="checkbox" checked data-index="${i}" style="accent-color:var(--accent);">
+                        <span><strong>${l.name}</strong>  <span style="color:var(--text-muted);font-size:11px;">(${l.geomType}, ${l.count} features)</span></span>
+                    </label>`
+                ).join('');
+
+                document.getElementById('layer-selector-modal').style.display = 'flex';
+                indicator.style.display = 'none';
+
+            } catch (err) {
+                indicator.style.display = 'none';
+                alert("Shapefile Load Error: " + err.message);
+                pendingGdbLayers = [];
+                pendingGdalInstance = null;
+                pendingImportType = '';
+            }
+        }
+
+        async function confirmLayerSelection() {
+            let checked = document.querySelectorAll('#layer-selector-list input[type=checkbox]:checked');
+            if (checked.length === 0) {
+                alert("Please select at least one layer.");
+                return;
+            }
+
+            document.getElementById('layer-selector-modal').style.display = 'none';
+            let indicator = document.getElementById('source-indicator');
+            let label = document.getElementById('source-label');
+            indicator.style.display = 'flex';
+            label.innerText = 'Converting layers...';
+
+            try {
+                let Gdal = pendingGdalInstance;
+                let allFeatures = [];
+                for (let cb of checked) {
+                    let idx = parseInt(cb.dataset.index);
+                    let entry = pendingGdbLayers[idx];
+                    try {
+                        let options = ['-f', 'GeoJSON', '-t_srs', 'EPSG:4326'];
+                        let outputPath = await Gdal.ogr2ogr(entry.dataset, options);
+                        let bytes = await Gdal.getFileBytes(outputPath.local);
+                        let text = new TextDecoder().decode(bytes);
+                        let geojson = JSON.parse(text);
+                        if (geojson.type === "FeatureCollection" && geojson.features) {
+                            for (let feat of geojson.features) {
+                                if (!feat.properties) feat.properties = {};
+                                feat.properties._layer = entry.name;
+                            }
+                            allFeatures.push(...geojson.features);
+                        }
+                    } catch (e) {
+                        console.warn("Skipping layer:", entry.name, e);
+                    } finally {
+                        try { await Gdal.close(entry.dataset); } catch (_) {}
+                    }
+                }
+
+                if (allFeatures.length === 0) {
+                    throw new Error("No features could be extracted from the selected layers.");
+                }
+
+                currentFeatures = allFeatures;
+                assignUniquePolyIds();
+
+                let allProps = new Set();
+                allFeatures.slice(0, 100).forEach(feat => {
+                    if (feat.properties) {
+                        Object.keys(feat.properties).forEach(key => allProps.add(key));
+                    }
+                });
+                currentFields = Array.from(allProps);
+
+                populateDropdowns(currentFields);
+                renderPolygonsOnMap();
+
+                let gdbPath = pendingGdbLayers.length > 0 ? pendingGdbLayers[0].dataset.path : '';
+                let gdbName = gdbPath.split('/').filter(Boolean)[0] || 'Import';
+                let prefix = pendingImportType === 'shapefile' ? 'Shapefile' : 'File Geodatabase';
+                label.innerText = prefix + ": " + gdbName;
+                indicator.style.display = 'flex';
+                showStep('fields');
+                showStep('workspace');
+
+            } catch (err) {
+                indicator.style.display = 'none';
+                alert("GDB Import Error: " + err.message);
+            } finally {
+                pendingGdbLayers = [];
+                pendingGdalInstance = null;
+                pendingImportType = '';
+            }
+        }
+
+        /* ---------- EXPORT MODAL ---------- */
+        let exportFormat = 'geojson';
+
+        function openExportModal() {
+            if (!currentFeatures || currentFeatures.length === 0) {
+                alert("No data loaded. Load a dataset first.");
+                return;
+            }
+            exportFormat = 'geojson';
+            selectExportFormat('geojson');
+            document.getElementById('export-modal').style.display = 'flex';
+        }
+
+        function selectExportFormat(format) {
+            exportFormat = format;
+            document.querySelectorAll('[id^="export-opt-"]').forEach(el => {
+                el.style.borderColor = 'transparent';
+                el.style.background = 'rgba(255,255,255,0.04)';
+            });
+            let opt = document.getElementById('export-opt-' + format);
+            if (opt) {
+                opt.style.borderColor = 'var(--accent)';
+                opt.style.background = 'rgba(99,102,241,0.12)';
+                opt.querySelector('input[type=radio]').checked = true;
+            }
+            document.getElementById('export-options-geojson').style.display = format === 'geojson' ? 'block' : 'none';
+            document.getElementById('export-options-filegdb').style.display = format === 'filegdb' ? 'block' : 'none';
+        }
+
+        async function confirmExport() {
+            document.getElementById('export-modal').style.display = 'none';
+
+            if (exportFormat === 'geojson') {
+                let merged = document.getElementById('export-merge-districts').checked;
+                if (merged) {
+                    exportMergedGeoJSON();
+                } else {
+                    exportGeoJSONData();
+                }
+                return;
+            }
+
+            // Shapefile or FileGDB — use gdal3.js
+            let indicator = document.getElementById('source-indicator');
+            let label = document.getElementById('source-label');
+            indicator.style.display = 'flex';
+            label.innerText = 'Converting and exporting...';
+
+            try {
+                const initGdalJs = (await import('https://cdn.jsdelivr.net/npm/gdal3.js@2.8.1/dist/package/gdal3.js')).default;
+                const Gdal = await initGdalJs({
+                    path: 'https://cdn.jsdelivr.net/npm/gdal3.js@2.8.1/dist/package',
+                    useWorker: false
+                });
+
+                // Build GeoJSON FeatureCollection from current features
+                let fc = { type: 'FeatureCollection', features: currentFeatures };
+                let encoder = new TextEncoder();
+                Gdal.Module.FS.writeFile('/input/export_source.geojson', encoder.encode(JSON.stringify(fc)));
+
+                let result = await Gdal.open('/input/export_source.geojson');
+                if (!result.datasets || result.datasets.length === 0) {
+                    throw new Error("Failed to open source data.");
+                }
+                let dataset = result.datasets[0];
+
+                if (exportFormat === 'shapefile') {
+                    let outputPath = await Gdal.ogr2ogr(dataset, ['-f', 'ESRI Shapefile', '-t_srs', 'EPSG:4326'], 'export');
+                    let allFiles = outputPath.all || [];
+                    let zipData = {};
+                    for (let f of allFiles) {
+                        let bytes = await Gdal.getFileBytes(f.local);
+                        let fileName = f.local.split('/').pop();
+                        zipData[fileName] = new Uint8Array(bytes);
+                    }
+                    let zipped = fflate.zipSync(zipData, { level: 0 });
+                    downloadBlob(new Blob([zipped], { type: 'application/zip' }), 'export_shapefile.zip');
+                } else if (exportFormat === 'filegdb') {
+                    let fcName = document.getElementById('export-feature-class').value.trim() || 'districts';
+                    let outputPath = await Gdal.ogr2ogr(dataset, ['-f', 'OpenFileGDB', '-t_srs', 'EPSG:4326', '-nln', fcName], 'export');
+                    let allFiles = outputPath.all || [];
+                    let zipData = {};
+                    for (let f of allFiles) {
+                        let bytes = await Gdal.getFileBytes(f.local);
+                        let relPath = f.local.replace('/output/export.gdb/', '').replace('/output/', '');
+                        zipData[relPath] = new Uint8Array(bytes);
+                    }
+                    let zipped = fflate.zipSync(zipData, { level: 0 });
+                    downloadBlob(new Blob([zipped], { type: 'application/zip' }), 'export_filegdb.zip');
+                }
+
+                try { await Gdal.close(dataset); } catch (_) {}
+
+            } catch (err) {
+                alert("Export Error: " + err.message);
+            } finally {
+                indicator.style.display = 'none';
+            }
+        }
+
+        function downloadBlob(blob, fileName) {
+            let url = URL.createObjectURL(blob);
+            let a = document.createElement('a');
+            a.href = url;
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(url);
         }
 
         /* ---------- MAP SEARCH & AUTOCOMPLETE (Photon / Komoot) ---------- */
