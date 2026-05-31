@@ -1169,7 +1169,7 @@
                     <option value="custom">Use Manually Selected Seeds (🎯)</option>
                 </select>
                 <span id="auto-district-seed-info" style="font-size: 10px; color: var(--text-muted); display: block; margin-top: 4px;">
-                    Automatically spread starting points evenly across the map.
+                    Each restart randomly picks new starting polygons, then spreads them evenly across the map.
                 </span>
                 <button onclick="setSeedsFromCurrentDistricts()" style="margin-top: 8px; width: 100%; padding: 7px; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 6px; color: var(--text); font-size: 12px; cursor: pointer;">
                     Set Seeds from Current Districts
@@ -1194,6 +1194,9 @@
                     <div id="auto-district-progress-bar" style="width: 0%; height: 100%; background: var(--accent); transition: width 0.3s ease; border-radius: 3px;"></div>
                 </div>
                 <span id="auto-district-progress-detail" style="font-size: 10px; color: var(--text-muted); display: block; text-align: center;">Initializing...</span>
+            </div>
+            <div id="auto-district-seed-warning" style="display: none; margin-top: 8px; padding: 8px 10px; background: rgba(251, 191, 36, 0.15); border: 1px solid rgba(251, 191, 36, 0.4); border-radius: 6px; font-size: 11px; color: #fbbf24;">
+                Select 1 seed per district using the Seed Picker tool, or switch to Automatic mode.
             </div>
             <button class="btn-primary" id="btn-run-auto-district" onclick="runAutoDistrictSolver()" style="width: 100%; margin-top: 12px; font-size: 13px; padding: 10px;">Run Optimization Solver</button>
         </div>
@@ -2383,14 +2386,26 @@
             recalculateAnalytics(previewSums, previewSecSums, true, previous, activeDistrict);
         }
 
+        function updateAutoDistrictButton() {
+            let btn = document.getElementById('btn-run-auto-district');
+            let warning = document.getElementById('auto-district-seed-warning');
+            let seedMode = document.getElementById('auto-district-seed-mode').value;
+            let disabled = seedMode === 'custom' && Object.keys(customDistrictSeeds).length === 0;
+            btn.disabled = disabled;
+            btn.style.opacity = disabled ? '0.5' : '1';
+            btn.style.cursor = disabled ? 'not-allowed' : 'pointer';
+            warning.style.display = disabled ? 'block' : 'none';
+        }
+
         function handleSeedModeChange() {
             let mode = document.getElementById('auto-district-seed-mode').value;
             let info = document.getElementById('auto-district-seed-info');
             if (mode === 'auto') {
-                info.innerText = "Automatically spread starting points evenly across the map.";
+                info.innerText = "Each restart randomly picks new starting polygons, then spreads them evenly across the map.";
             } else if (mode === 'custom') {
                 info.innerText = "Grow districts from the seed polygons you designate using the 'Seed Picker' tool.";
             }
+            updateAutoDistrictButton();
         }
 
         function setSeedsFromCurrentDistricts() {
@@ -2461,6 +2476,7 @@
             });
 
             updateSeedsUI();
+            updateAutoDistrictButton();
         }
 
         function updateSeedsUI() {
@@ -3201,6 +3217,7 @@
             repopulateDistrictDropdown();
             updateMapLegend();
             recalculateAnalytics();
+            updateAutoDistrictButton();
         }
 
         function renameDistrict(oldName, newName) {
@@ -4017,6 +4034,7 @@
                 return;
             }
             document.getElementById('auto-district-modal').style.display = 'flex';
+            updateAutoDistrictButton();
         }
 
         function closeAutoDistrictModal() {
@@ -4496,10 +4514,14 @@
                 alert("Please select a Primary Target Field first to optimize.");
                 return;
             }
-            
+
+            let seedMode = document.getElementById('auto-district-seed-mode').value || 'auto';
+            if (seedMode === 'custom' && Object.keys(customDistrictSeeds).length === 0) {
+                return;
+            }
+
             let numDistricts = parseInt(document.getElementById('auto-district-count').value) || 5;
             let restarts = parseInt(document.getElementById('auto-district-restarts').value) || 5;
-            let seedMode = document.getElementById('auto-district-seed-mode').value || 'auto';
             let compactness = parseFloat(document.getElementById('auto-district-compactness').value) / 100.0;
             
             let btn = document.getElementById('btn-run-auto-district');
