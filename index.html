@@ -1157,7 +1157,7 @@
             </div>
             <div class="form-group" style="margin-top: 12px;">
                 <label>Random Restarts</label>
-                <input type="number" id="auto-district-restarts" value="5" min="1" max="100">
+                <input type="number" id="auto-district-restarts" value="100" min="1">
                 <span style="font-size: 10px; color: var(--text-muted); display: block; margin-top: 4px;">
                     More restarts explore more configurations to find the best balance, but take slightly longer.
                 </span>
@@ -1166,18 +1166,20 @@
                 <label>Seed Selection Mode</label>
                 <select id="auto-district-seed-mode" style="width: 100%; background: var(--bg-card); color: var(--text); border: 1px solid var(--border-color); padding: 8px; border-radius: 6px; font-size: 12px;" onchange="handleSeedModeChange()">
                     <option value="auto">Automatic (Furthest-First)</option>
-                    <option value="assigned">Use Current District Assignments</option>
                     <option value="custom">Use Manually Selected Seeds (🎯)</option>
                 </select>
                 <span id="auto-district-seed-info" style="font-size: 10px; color: var(--text-muted); display: block; margin-top: 4px;">
                     Automatically spread starting points evenly across the map.
                 </span>
+                <button onclick="setSeedsFromCurrentDistricts()" style="margin-top: 8px; width: 100%; padding: 7px; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 6px; color: var(--text); font-size: 12px; cursor: pointer;">
+                    Set Seeds from Current Districts
+                </button>
             </div>
             <div class="form-group" style="margin-top: 12px;">
                 <label>Shape Compactness</label>
                 <div style="display: flex; align-items: center; gap: 10px; margin-top: 6px;">
-                    <input type="range" id="auto-district-compactness" min="0" max="100" value="50" style="flex: 1;" oninput="document.getElementById('auto-district-compactness-val').innerText = this.value + '%'">
-                    <span id="auto-district-compactness-val" style="font-size: 12px; font-weight: 600; width: 35px; text-align: right; color: var(--accent);">50%</span>
+                    <input type="range" id="auto-district-compactness" min="0" max="100" value="20" style="flex: 1;" oninput="document.getElementById('auto-district-compactness-val').innerText = this.value + '%'">
+                    <span id="auto-district-compactness-val" style="font-size: 12px; font-weight: 600; width: 35px; text-align: right; color: var(--accent);">20%</span>
                 </div>
                 <span style="font-size: 10px; color: var(--text-muted); display: block; margin-top: 6px;">
                     Higher compactness optimizes for rounder shapes; lower compactness optimizes purely for equal balances.
@@ -1237,7 +1239,7 @@
                         <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">.gdb folder (zip)</div>
                     </label>
                 </div>
-                <div id="export-options-geojson" style="margin-top: 12px;">
+                <div style="margin-top: 12px;">
                     <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer;">
                         <input type="checkbox" id="export-merge-districts" style="accent-color:var(--accent);">
                         Merge districts into single polygons
@@ -1247,6 +1249,7 @@
                     <label style="font-size: 12px; display: block; margin-bottom: 4px;">Feature Class Name</label>
                     <input type="text" id="export-feature-class" value="districts" style="width:100%;padding:8px 10px;background:var(--bg-card);border:1px solid var(--border-color);border-radius:6px;color:var(--text);font-size:13px;">
                 </div>
+                <div style="margin-top: 12px; font-size: 11px; color: var(--text-muted); text-align: center;" id="export-shapefile-note">Shapefile will be downloaded as a .zip</div>
             </div>
             <button class="btn-primary" onclick="confirmExport()" style="width: 100%; margin-top: 16px; font-size: 13px; padding: 10px;">Export</button>
         </div>
@@ -1939,15 +1942,15 @@
                 opt.style.background = 'rgba(99,102,241,0.12)';
                 opt.querySelector('input[type=radio]').checked = true;
             }
-            document.getElementById('export-options-geojson').style.display = format === 'geojson' ? 'block' : 'none';
             document.getElementById('export-options-filegdb').style.display = format === 'filegdb' ? 'block' : 'none';
+            document.getElementById('export-shapefile-note').style.display = format === 'shapefile' ? 'block' : 'none';
         }
 
         async function confirmExport() {
             document.getElementById('export-modal').style.display = 'none';
+            let merged = document.getElementById('export-merge-districts').checked;
 
             if (exportFormat === 'geojson') {
-                let merged = document.getElementById('export-merge-districts').checked;
                 if (merged) {
                     exportMergedGeoJSON();
                 } else {
@@ -1969,8 +1972,17 @@
                     useWorker: false
                 });
 
-                // Build GeoJSON FeatureCollection from current features
-                let fc = { type: 'FeatureCollection', features: currentFeatures };
+                // Build source FeatureCollection (optionally merged)
+                let fc;
+                if (merged) {
+                    fc = buildMergedFeatureCollection();
+                    if (!fc.features.length) {
+                        throw new Error("No district assignments to merge.");
+                    }
+                } else {
+                    fc = { type: 'FeatureCollection', features: currentFeatures };
+                }
+
                 let encoder = new TextEncoder();
                 Gdal.Module.FS.writeFile('/input/export_source.geojson', encoder.encode(JSON.stringify(fc)));
 
@@ -2012,6 +2024,72 @@
             } finally {
                 indicator.style.display = 'none';
             }
+        }
+
+        function buildMergedFeatureCollection() {
+            let vf = document.getElementById('field-select').value;
+            let sf = document.getElementById('secondary-field-select').value;
+            let df = document.getElementById('district-field-select').value;
+
+            let districtGroups = {};
+            mapLayerGroup.eachLayer(layer => {
+                layer.eachLayer(l => {
+                    let district = l._props.assignedDistrict;
+                    if (!district) return;
+                    if (!districtGroups[district]) {
+                        districtGroups[district] = { polygons: [], primarySum: 0, secondarySum: 0, count: 0 };
+                    }
+                    let g = districtGroups[district];
+                    g.count++;
+                    if (vf) g.primarySum += parseFloat(l._props[vf]) || 0;
+                    if (sf) g.secondarySum += parseFloat(l._props[sf]) || 0;
+                    let geo = l.toGeoJSON().geometry;
+                    if (geo.type === 'Polygon') {
+                        g.polygons.push(geo.coordinates);
+                    } else if (geo.type === 'MultiPolygon') {
+                        for (let coords of geo.coordinates) {
+                            g.polygons.push(coords);
+                        }
+                    }
+                });
+            });
+
+            let features = [];
+            for (let dName of Object.keys(districtGroups)) {
+                let g = districtGroups[dName];
+                let mergedCoords;
+                if (g.polygons.length > 1) {
+                    try {
+                        let result = polygonClipping.union(...g.polygons);
+                        mergedCoords = result.length === 0 ? null : (result.length === 1 ? result[0] : result);
+                    } catch (e) {
+                        console.warn("Union failed for district", dName, e);
+                        mergedCoords = null;
+                    }
+                } else if (g.polygons.length === 1) {
+                    mergedCoords = g.polygons[0];
+                }
+                if (!mergedCoords) mergedCoords = g.polygons;
+
+                let geometryType;
+                if (mergedCoords.length > 0 && Array.isArray(mergedCoords[0]) && Array.isArray(mergedCoords[0][0]) && typeof mergedCoords[0][0][0] === 'number') {
+                    geometryType = 'Polygon';
+                } else {
+                    geometryType = 'MultiPolygon';
+                }
+
+                let props = { district: dName, feature_count: g.count };
+                if (vf) props[vf + '_sum'] = g.primarySum;
+                if (sf) props[sf + '_sum'] = g.secondarySum;
+                if (df) props[df] = dName;
+
+                features.push({
+                    type: 'Feature',
+                    geometry: { type: geometryType, coordinates: mergedCoords },
+                    properties: props
+                });
+            }
+            return { type: 'FeatureCollection', features: features };
         }
 
         function downloadBlob(blob, fileName) {
@@ -2310,10 +2388,48 @@
             let info = document.getElementById('auto-district-seed-info');
             if (mode === 'auto') {
                 info.innerText = "Automatically spread starting points evenly across the map.";
-            } else if (mode === 'assigned') {
-                info.innerText = "Start growing districts from the center of current district groups.";
             } else if (mode === 'custom') {
                 info.innerText = "Grow districts from the seed polygons you designate using the 'Seed Picker' tool.";
+            }
+        }
+
+        function setSeedsFromCurrentDistricts() {
+            let vf = document.getElementById('field-select').value;
+            let districtPolys = {};
+            mapLayerGroup.eachLayer(layer => {
+                layer.eachLayer(l => {
+                    let district = l._props.assignedDistrict;
+                    if (!district) return;
+                    if (!districtPolys[district]) districtPolys[district] = [];
+                    let centroid = computeCentroid(l.toGeoJSON().geometry);
+                    districtPolys[district].push({ centroid, polyId: l._props._poly_id, value: vf ? (parseFloat(l._props[vf]) || 1) : 1 });
+                });
+            });
+
+            let districtNames = Object.keys(districtPolys).sort((a, b) => a.localeCompare(b, undefined, {numeric: true, sensitivity: 'base'}));
+            customDistrictSeeds = {};
+            for (let dName of districtNames) {
+                let polys = districtPolys[dName];
+                if (polys.length === 0) continue;
+                let avgX = polys.reduce((s, p) => s + p.centroid[0], 0) / polys.length;
+                let avgY = polys.reduce((s, p) => s + p.centroid[1], 0) / polys.length;
+                let best = polys[0];
+                let bestDist = Infinity;
+                for (let p of polys) {
+                    let d = (p.centroid[0] - avgX) ** 2 + (p.centroid[1] - avgY) ** 2;
+                    if (d < bestDist) { bestDist = d; best = p; }
+                }
+                customDistrictSeeds[dName] = best.polyId;
+            }
+
+            document.getElementById('auto-district-seed-mode').value = 'custom';
+            handleSeedModeChange();
+            if (mapLayerGroup) {
+                mapLayerGroup.eachLayer(layer => {
+                    layer.eachLayer(l => {
+                        l.setStyle(getPolygonStyle(l));
+                    });
+                });
             }
         }
 
