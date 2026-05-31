@@ -1283,6 +1283,19 @@
         let seedModeActive = false;
         let customDistrictSeeds = {}; // Key: district name, Value: unique _poly_id
 
+        async function loadGdalJs() {
+            try {
+                const initGdalJs = (await import('./gdal3.js')).default;
+                return await initGdalJs({ path: '.', useWorker: false });
+            } catch (_) {
+                const initGdalJs = (await import('https://cdn.jsdelivr.net/npm/gdal3.js@2.8.1/dist/package/gdal3.js')).default;
+                return await initGdalJs({
+                    path: 'https://cdn.jsdelivr.net/npm/gdal3.js@2.8.1/dist/package',
+                    useWorker: false
+                });
+            }
+        }
+
         // Drag-and-drop district reassignment state
         let dragSourceLayer = null;
         let dragSourceDistrict = null;
@@ -1675,12 +1688,7 @@
             label.innerText = 'Loading GDB via GDAL (WASM)...';
 
             try {
-                const initGdalJs = (await import('https://cdn.jsdelivr.net/npm/gdal3.js@2.8.1/dist/package/gdal3.js')).default;
-
-                const Gdal = await initGdalJs({
-                    path: 'https://cdn.jsdelivr.net/npm/gdal3.js@2.8.1/dist/package',
-                    useWorker: false
-                });
+                const Gdal = await loadGdalJs();
 
                 let gdbDir = '/' + files[0].webkitRelativePath.split('/')[0];
                 let fs = Gdal.Module.FS;
@@ -1766,12 +1774,7 @@
             label.innerText = 'Loading Shapefile via GDAL (WASM)...';
 
             try {
-                const initGdalJs = (await import('https://cdn.jsdelivr.net/npm/gdal3.js@2.8.1/dist/package/gdal3.js')).default;
-
-                const Gdal = await initGdalJs({
-                    path: 'https://cdn.jsdelivr.net/npm/gdal3.js@2.8.1/dist/package',
-                    useWorker: false
-                });
+                const Gdal = await loadGdalJs();
 
                 let shpDir = '/' + files[0].webkitRelativePath.split('/')[0];
                 let fs = Gdal.Module.FS;
@@ -1969,11 +1972,7 @@
             label.innerText = 'Converting and exporting...';
 
             try {
-                const initGdalJs = (await import('https://cdn.jsdelivr.net/npm/gdal3.js@2.8.1/dist/package/gdal3.js')).default;
-                const Gdal = await initGdalJs({
-                    path: 'https://cdn.jsdelivr.net/npm/gdal3.js@2.8.1/dist/package',
-                    useWorker: false
-                });
+                const Gdal = await loadGdalJs();
 
                 // Build source FeatureCollection (optionally merged)
                 let fc;
